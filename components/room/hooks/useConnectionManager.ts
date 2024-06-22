@@ -11,10 +11,25 @@ import {
   RemoveParticipantEvent,
 } from "../types";
 
+type Action = 
+    { type: "MUTE" }
+  | { type: "UNMUTE" };
+
 export const useConnectionManager = (roomId: string) => {
   const connectionManager = useConnectionManagerContext();
 
   const [participants, setParticipants] = useState<Participant[]>([]);
+
+  const onAction= (action:Action)=>{
+    if(action.type==="MUTE"){
+      console.log("MUTING...");
+      connectionManager.mute();
+    }
+    if(action.type==="UNMUTE"){
+      console.log("UNMUTING...");
+      connectionManager.unmute();
+    }
+  }
 
   const handleAddParticipant = useCallback(
     (e: NewParticipantEvent) => {
@@ -58,5 +73,5 @@ export const useConnectionManager = (roomId: string) => {
     };
   }, []);
 
-  return { participants, onAction: undefined };
+  return { participants, onAction };
 };

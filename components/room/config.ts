@@ -1,4 +1,4 @@
-export const SOCKET_URL = "paste url of your socketio signalling server";
+export const SOCKET_URL = "https://0480-2409-40c1-55-ed3f-d45b-17b2-984d-8d3.ngrok-free.app/";
 
 const getTurnServerList = () => {
   const brute_array = [];

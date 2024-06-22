@@ -1,5 +1,5 @@
 import io, { Socket } from "socket.io-client";
-
+// import { Rnnoise } from "@shiguredo/rnnoise-wasm";
 //types
 import {
   SocketEvent,
@@ -17,16 +17,96 @@ export class ConnectionManager extends EventTarget {
   private _pcConfig: any;
   private _isAdmin: boolean = false;
 
+  private _audioContext?: AudioContext;
+  private _workletNode?: AudioWorkletNode;
+
   private _localStream?: MediaStream;
   private _remoteStreams: Record<string, MediaStream> = {};
+  private _hostURL?: string;
 
-  constructor({ socketUrl, pcConfig }: { socketUrl: string; pcConfig: any }) {
+  private _rnnoise: any;
+
+  private _audioSource: MediaStreamAudioSourceNode | null = null;
+
+  private _audioDestination: MediaStreamAudioDestinationNode | null = null;
+
+  private _noiseSuppressorNode?: AudioWorkletNode | null = null;
+
+  private _originalMediaTrack: MediaStreamTrack | null = null;
+
+  private _outputMediaTrack: MediaStreamTrack | null = null;
+
+  constructor({
+    socketUrl,
+    pcConfig,
+    hostURL,
+  }: {
+    socketUrl: string;
+    pcConfig: any;
+    hostURL: string;
+  }) {
     super();
-
+    this._hostURL = hostURL;
+    console.log("hostURL ,this", this._hostURL);
     this._pcConfig = pcConfig;
+    // try {
     this._socket = io(socketUrl, {
       transports: ["websocket"],
     });
+
+    // this._loadRNNoise();
+    // }
+    // catch (error) {
+    //   console.log("Error", { error });
+    // }
+  }
+  // private async _loadRNNoise(){
+  //   //  this._rnnoise = await Rnnoise.load({assetsPath:`${this._hostURL}/`});
+  //    console.log("RNN loaded");
+  // }
+
+  private async _initializeAudioContext(): Promise<AudioWorkletNode | undefined
+  > {
+    // if(this._audioContext){
+    //   this._workletNode?.disconnect();
+    //   this._audioContext.close();
+    // }
+    // this._audioContext = new ((window as any).AudioContext || (window as any).webkitAudioContext)();
+    // try {
+
+    //   // console.log("Rnn framesize: ",this._rnnoise.frameSize);
+
+    //   await this._audioContext!.audioWorklet.addModule( `${this._hostURL}/NoiseSuppressionProcessor.ts`);
+    //   console.log("AUDIOCONT. ",this._audioContext);
+
+    //   setTimeout(() => {
+    //   }, 500);
+
+    //   this._workletNode = new AudioWorkletNode(this._audioContext!, "noise-suppression-processor", {
+
+    //   });
+    //   this._workletNode?.port.postMessage({rnnoise: this._rnnoise, type: "rnnoise_module"});
+
+    //   console.log("AUDIO CONTEXT");
+    //   this._workletNode.connect(this._audioContext!.destination);
+    // } catch (error) {
+
+    //   console.error('Error initializing audio context:', JSON.stringify(error));
+    // }
+
+    await this._audioContext?.resume();
+    try {
+      setTimeout(() => {}, 1000);
+      await this._audioContext!.audioWorklet.addModule(
+        `${this._hostURL}/NoiseSuppressionProcessor.js`
+      ); // ?? see source code
+    } catch (error) {
+      console.log("Error while adding audio worklet module: ", error);
+    }
+    setTimeout(() => {}, 1000);
+    return (new AudioWorkletNode(this._audioContext!, 'noise-suppressor-worklet',{
+
+    }));
   }
 
   getRoomId() {
@@ -299,11 +379,64 @@ export class ConnectionManager extends EventTarget {
     console.log("Created RTCPeerConnection for ", socketId);
   }
 
-  init(roomId: string) {
+  startEffect(audioStream: MediaStream): MediaStream {
+    this._originalMediaTrack = audioStream.getAudioTracks()[0];
+
+    // if (!this._audioContext) {
+    //   this._audioContext = new ((window as any).AudioContext ||
+    //     (window as any).webkitAudioContext)();
+    // }
+    console.log("AC -",this._audioContext);
+    this._audioSource = this._audioContext!.createMediaStreamSource(audioStream);
+    this._audioDestination = this._audioContext!.createMediaStreamDestination();
+    this._outputMediaTrack = this._audioDestination.stream.getAudioTracks()[0];
+
+    let init = this._initializeAudioContext().then((filterNode) => {
+      this._noiseSuppressorNode = filterNode;
+    });
+
+    init.then(() => {
+      if (this._noiseSuppressorNode) {
+        this._audioSource?.connect(this._noiseSuppressorNode);
+        this._noiseSuppressorNode.connect(this._audioDestination!);
+      }
+    });
+
+    // Sync the effect track muted state with the original track state.
+    this._outputMediaTrack.enabled = this._originalMediaTrack.enabled;
+
+    this._originalMediaTrack.enabled = true;
+
+    return this._audioDestination.stream;
+  }
+
+  public async init(roomId: string) {
     // add roomId to local variables
     this._roomId = roomId;
-
+    
     // getLocalStream
+    // try {
+    //   this._localStream = await navigator.mediaDevices.getUserMedia({
+    //     audio: true,
+    //     video: true,
+    //   });
+    //   this.mute();
+    //   // if (this._audioContext && this._workletNode && this._localStream) {
+    //   //   const source = this._audioContext.createMediaStreamSource(this._localStream);
+    //   //   source.connect(this._workletNode);
+    //   // }
+    //   if (!this._audioContext) {
+    //     this._audioContext = new ((window as any).AudioContext ||
+    //       (window as any).webkitAudioContext)();
+    //   }
+
+    //   console.log("Got the local stream.", this._localStream);
+    //   this._addEventListeners();
+
+    //   console.log("Initialization completed successfully.");
+    // } catch (error) {
+    //   console.error("Error initializing:", error);
+    // }
     navigator.mediaDevices
       .getUserMedia({
         audio: true,
@@ -319,10 +452,37 @@ export class ConnectionManager extends EventTarget {
       .catch((e) => {
         console.error("Can't get user media because of error: ", { error: e });
       });
-  }
 
+
+
+
+
+
+  }
+  mute() {
+    var audioTracks = this._localStream!.getAudioTracks();
+    audioTracks.forEach(function (track) {
+      track.enabled = false;
+    });
+  }
+  unmute() {
+    var audioTracks = this._localStream!.getAudioTracks();
+    audioTracks.forEach(function (track) {
+      track.enabled = true;
+    });
+    // start effecT
+    
+    // const processedStream = this.startEffect(this._localStream!);
+    // this._localStream = processedStream;
+  }
   destroy() {
     console.log("Destroying websocket");
-    this._socket.close();
+    if (this._socket) {
+      this._socket.close();
+    }
+    // Close the audio context if it exists
+    if (this._audioContext) {
+      this._audioContext.close();
+    }
   }
 }

@@ -7,15 +7,23 @@ import { ConnectionManagerProvider } from "@core/connectionManager/contexts";
 
 import { SOCKET_URL, PC_CONFIG } from "./config";
 
+import Visualizer from "./components/participantsGrid/Visualizer2";
+
 type RoomProps = { roomId: string };
 
 const Room = ({ roomId }: RoomProps) => {
   const { participants, onAction } = useConnectionManager(roomId);
 
   return (
-    <ControlsContainer onAction={onAction}>
+    <>
+    {/* <ControlsContainer onAction={onAction}>
+      
       <ParticipantsGrid participants={participants} onAction={onAction} />
-    </ControlsContainer>
+      
+    </ControlsContainer> */}
+    
+    <Visualizer />
+    </>
   );
 };
 

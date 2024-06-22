@@ -6,8 +6,8 @@ import { ConnectionManager } from "@core/connectionManager";
 import { ConnectionManagerContext } from "./connectionManagerContext";
 
 const getConnectionManagerInstance = _once(
-  ({ socketUrl, pcConfig }): ConnectionManager =>
-    new ConnectionManager({ socketUrl, pcConfig })
+  ({ socketUrl, pcConfig, hostURL }): ConnectionManager =>
+    new ConnectionManager({ socketUrl, pcConfig, hostURL })
 );
 
 type Props = {
@@ -21,9 +21,11 @@ export const ConnectionManagerProvider = ({
   socketUrl,
   pcConfig,
 }: Props) => {
+
   const connectionManagerInstance = getConnectionManagerInstance({
     socketUrl,
     pcConfig,
+    hostURL : window.location.origin
   });
 
   return (

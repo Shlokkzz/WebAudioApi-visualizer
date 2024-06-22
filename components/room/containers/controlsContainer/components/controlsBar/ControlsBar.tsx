@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useState,useMemo } from "react";
 
 import { IconContext } from "react-icons";
 
@@ -23,6 +23,14 @@ export const ControlsBar = ({ onAction }: any) => {
   const { onAction: onScreenRecorderAction, recorderActionStyles } =
     useScreenRecorder();
 
+    const [isMuted  , setIsMuted]=useState(true);
+
+    const handleMicClick=()=>{
+      console.log("Click ? ");
+      onAction({type:isMuted?"UNMUTE":"MUTE"});
+      setIsMuted((prev)=>(!prev));
+    }
+
   return (
     <IconContext.Provider value={{ color: "white" }}>
       <div className="flex flex-row h-full">
@@ -33,7 +41,7 @@ export const ControlsBar = ({ onAction }: any) => {
           <div className={ICON_CLASS}>
             <BsCameraVideo />
           </div>
-          <div className={ICON_CLASS}>
+          <div className={ICON_CLASS} onClick={handleMicClick}>
             <BiMicrophone />
           </div>
           <IconContext.Provider
