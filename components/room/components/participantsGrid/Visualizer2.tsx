@@ -87,6 +87,8 @@ const Visualizer: React.FC = () => {
 
   const [selectedNode, setSelectedNode] = useState<CustomNode | null>(null);
 
+  const [selectedValue, setSelectedValue] = useState<string>('self-configure');
+
   // INIT
   useEffect(() => {
     const initAudio = async () => {
@@ -258,6 +260,8 @@ const Visualizer: React.FC = () => {
       analyser!.connect(audioCtx!.destination);
     }
     setEdges(updatedEdges);
+
+    console.log(nodes)
   };
 
   const handleReset = () => {
@@ -543,6 +547,116 @@ const Visualizer: React.FC = () => {
   const handleVisualizationChange = (type: "sinewave" | "frequencybars") => {
     setVisualizationType(type);
   };
+
+
+  // PRESETS
+  const handleAddPresetData = (
+    newNodeData: AudioNodeData[]
+  ) => {
+    let index = 1;
+    const updatedEdges = [];
+    for(let i=0;i<newNodeData.length;i++){
+
+    
+    const newNodeId = (index).toString();
+
+
+    const newNode: CustomNode = {
+      id: newNodeId,
+      type: "default",
+      data: newNodeData[i],
+      position:
+        nodes.length == 0
+          ? { x: 250, y: 50 }
+          : {
+              x: 250+ 20*index,
+              y: 50+ 20*index,
+            }, // Adjust the position as needed
+      style: {
+        backgroundColor:
+          newNodeData[i].type === "dynamicsCompressor"
+            ? "#f4e2d8"
+            : newNodeData[i].type === "gain"
+            ? "#ddd6f3"
+            : "ffedbc",
+      },
+    };
+    updatedEdges.push(newNode);
+    index++;
+  }
+    setNodes(updatedEdges);
+    handleChanges();
+  };
+
+  const handlePreset = (event:React.ChangeEvent<HTMLSelectElement>): void=>{
+      setSelectedValue(event.target.value);
+      if(event.target.value==='Preset-1'){
+        handleReset();
+        const data:AudioNodeData[]=[
+          {
+            id: "1",
+          label: `Biquad Filter 1`,
+          type: "biquadFilter",
+          audioNode: audioCtx!.createBiquadFilter(),
+          frequency: 3500,
+          Q: 1,
+          filterType: "lowpass",
+          },
+          {
+            id: "2",
+          label: `Dynamics Compressor 2`,
+          type: "dynamicsCompressor",
+          audioNode: audioCtx!.createDynamicsCompressor(),
+          threshold: -24,
+          knee: 20,
+          attack: 0.4,
+          release: 0.25,
+          ratio: 12,
+          },
+        ]
+        handleAddPresetData(data);
+      }
+      else if(event.target.value==='Preset-2'){
+        handleReset();
+        const data:AudioNodeData[]=[
+          {
+            id: "1",
+          label: `Biquad Filter 1`,
+          type: "biquadFilter",
+          audioNode: audioCtx!.createBiquadFilter(),
+          frequency: 3500,
+          Q: 1,
+          filterType: "lowpass",
+          },
+          {
+            id: "2",
+          label: `Dynamics Compressor 2`,
+          type: "dynamicsCompressor",
+          audioNode: audioCtx!.createDynamicsCompressor(),
+          threshold: -24,
+          knee: 20,
+          attack: 0.4,
+          release: 0.25,
+          ratio: 12,
+          },
+        ]
+        handleAddPresetData(data);
+      }
+      else if(event.target.value==='Preset-3'){
+        handleReset();
+      }
+      else if(event.target.value==='Preset-4'){
+        handleReset();
+      }
+      else if(event.target.value==='Preset-5'){
+        handleReset();
+      }
+      else{
+        // self configure
+        handleReset();
+        handleChanges();
+      }
+  }
 
 
 
@@ -918,7 +1032,7 @@ const Visualizer: React.FC = () => {
             </label>
             <br />
             <br />
-            <select style={filterButton(false)}>
+            <select style={filterButton(false)}  onChange={handlePreset} value= {selectedValue}>
               <option value="Preset-1">Preset-1</option>
               <option value="Preset-2">Preset-2</option>
               <option value="Preset-3">Preset-3</option>
